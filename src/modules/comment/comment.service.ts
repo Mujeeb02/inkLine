@@ -52,8 +52,8 @@ export class CommentService {
       body: c.body,
       resolved: c.resolved,
       selection: c.selection,
-      createdAt: c.createdAt.toISOString(),
-      updatedAt: c.updatedAt.toISOString(),
+      createdAt: c.createdAt ? c.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: c.updatedAt ? c.updatedAt.toISOString() : new Date().toISOString(),
     }));
   }
 

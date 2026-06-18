@@ -49,10 +49,12 @@ export function extractTextSnippet(content: JSONContent | null | undefined, limi
 }
 
 function mapDashboardDocument(document: MongooseDocumentFields): DashboardDocument {
+  const rawDate = document.updatedAt || (document as any).createdAt || new Date();
+  const dateStr = rawDate instanceof Date ? rawDate.toISOString() : new Date(rawDate).toISOString();
   return {
     id: document._id.toString(),
     title: document.title,
-    updatedAt: document.updatedAt.toISOString(),
+    updatedAt: dateStr,
     snippet: extractTextSnippet(document.content),
   };
 }
@@ -101,7 +103,7 @@ export class DocumentService {
       title: document.title,
       content: document.content,
       ownerId: document.ownerId.toString(),
-      updatedAt: document.updatedAt.toISOString(),
+      updatedAt: document.updatedAt ? document.updatedAt.toISOString() : new Date().toISOString(),
     };
   }
 
@@ -134,6 +136,9 @@ export class DocumentService {
     const sharedUserIds = document.sharedWith.map((entry) => entry.userId);
     const emailMap = await UserService.getUserEmailByIdMap(sharedUserIds);
 
+    const rawDate = document.updatedAt || (document as any).createdAt || new Date();
+    const dateStr = rawDate instanceof Date ? rawDate.toISOString() : new Date(rawDate).toISOString();
+
     return {
       id: document._id.toString(),
       title: document.title,
@@ -145,7 +150,7 @@ export class DocumentService {
         email: emailMap.get(entry.userId.toString()) ?? "Unknown user",
         role: entry.role,
       })),
-      updatedAt: document.updatedAt.toISOString(),
+      updatedAt: dateStr,
       permission,
     };
   }
@@ -199,7 +204,7 @@ export class DocumentService {
       id: updatedDocument._id.toString(),
       title: updatedDocument.title,
       content: updatedDocument.content,
-      updatedAt: updatedDocument.updatedAt.toISOString(),
+      updatedAt: updatedDocument.updatedAt ? updatedDocument.updatedAt.toISOString() : new Date().toISOString(),
       permission,
     };
   }

@@ -142,7 +142,7 @@ export class VersionService {
       id: updatedDoc._id.toString(),
       title: updatedDoc.title,
       content: updatedDoc.content,
-      updatedAt: updatedDoc.updatedAt.toISOString(),
+      updatedAt: updatedDoc.updatedAt ? updatedDoc.updatedAt.toISOString() : new Date().toISOString(),
     };
   }
 }
