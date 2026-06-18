@@ -16,9 +16,13 @@ Inkline is a full-stack document collaboration platform built as a Next.js 15 Ap
 src/
 ├── app/                        # Next.js App Router pages + API route handlers (thin delegates)
 │   ├── api/
+│   │   ├── comments/[id]/      # PATCH (resolve), DELETE comment
 │   │   ├── documents/[id]/     # PATCH, DELETE /api/documents/:id
+│   │   │   ├── comments/       # GET (list), POST (add) document comments
+│   │   │   ├── presence/       # GET (active users), POST (heartbeat) presence
+│   │   │   └── versions/       # GET (list versions), POST (restore version)
 │   │   ├── documents/          # GET, POST /api/documents
-│   │   ├── share/              # POST /api/share
+│   │   ├── share/              # POST, PATCH, DELETE share management
 │   │   ├── upload/             # POST /api/upload
 │   │   └── users/              # GET /api/users
 │   ├── dashboard/page.tsx      # Server Component — fetches docs, renders DocumentWorkspace
@@ -26,10 +30,14 @@ src/
 │   └── login/page.tsx          # Server Component — renders LoginCard
 │
 ├── modules/                    # Pure server-side business logic (no React)
+│   ├── comment/                # model · service · controller · routes · validation
 │   ├── document/               # model · repository · service · controller · routes · validation · types
+│   │   └── migration/          # migrate-shared-with.ts
+│   ├── presence/               # model · service · routes
 │   ├── share/                  # service · controller · routes · validation
 │   ├── upload/                 # service · controller · routes · validation
 │   ├── user/                   # model · repository · service · controller · routes · validation
+│   ├── version/                # model · service · controller · routes
 │   └── shared/
 │       ├── constants/          # SESSION_COOKIE_NAME, SEEDED_USERS, EMPTY_DOCUMENT_CONTENT
 │       ├── database/db.ts      # Mongoose singleton connection with global cache
@@ -40,11 +48,12 @@ src/
 ├── features/                   # Client-side feature components
 │   ├── auth/components/        # LoginCard — tabs, password fields, quick login buttons
 │   ├── documents/
-│   │   ├── components/         # DocumentWorkspace, DocumentEditor, EditorToolbar, EditorHeader, DocumentCard, …
-│   │   ├── hooks/use-autosave  # 3-second interval, saves only on change
-│   │   └── services/           # DocumentClientService — fetch wrappers for API routes
+│   │   ├── components/         # DocumentWorkspace, DocumentEditor, EditorToolbar, EditorHeader, PresenceAvatars, CommentPanel, VersionHistoryPanel, …
+│   │   ├── hooks/              # use-autosave, use-presence, use-comments, use-versions
+│   │   ├── services/           # DocumentClientService — fetch wrappers for API routes
+│   │   └── utils/              # export.ts (Markdown/PDF parsing)
 │   ├── sharing/
-│   │   ├── components/         # ShareModal — searchable user dropdown
+│   │   ├── components/         # ShareModal — searchable user dropdown, role selectors, share list
 │   │   └── services/           # SharingClientService
 │   └── uploads/
 │       ├── components/         # UploadModal — drag/drop, file picker
@@ -62,7 +71,12 @@ src/
     ├── document-create.test.ts
     ├── document-share.test.ts
     ├── upload-validation.test.ts
-    └── login-card.test.tsx
+    ├── login-card.test.tsx
+    ├── presence.test.ts
+    ├── comments.test.ts
+    ├── versions.test.ts
+    ├── roles.test.ts
+    └── export.test.ts
 ```
 
 ---
@@ -90,26 +104,33 @@ Session-based (no JWT, no OAuth):
 3. Every protected page / API route calls `getCurrentUser()` → reads cookie → looks up user in MongoDB.
 4. Seeded users are upserted on every auth operation (`ensureSeedUsers`), so the DB is always populated.
 
-> **Note:** Password authentication (`bcryptjs`) was added on top of the original spec's email-only flow. The Quick Login buttons remain for demo convenience.
-
 ---
 
 ## Data Model
 
 ```
 User          { _id, email, passwordHash?, createdAt, updatedAt }
-Document      { _id, title, content (Tiptap JSON), ownerId → User, sharedWith → User[], createdAt, updatedAt }
+Document      { _id, title, content (Tiptap JSON), ownerId → User, sharedWith: [{ userId → User, role: "viewer"|"commenter"|"editor" }], createdAt, updatedAt }
+Presence      { _id, documentId → Document, userId → User, email, lastSeen: Date } (TTL: 30s on lastSeen)
+Comment       { _id, documentId → Document, authorId → User, authorEmail, body, resolved: Boolean, selection: { from, to, text }, createdAt, updatedAt }
+Version       { _id, documentId → Document, savedBy → User, savedByEmail, title, content (Tiptap JSON), version: Number, createdAt }
 ```
 
-### Permission Model
+### Permission Model (Access Control Matrix)
 
-| Action | Owner | Shared User |
-|---|:---:|:---:|
-| View | ✅ | ✅ |
-| Edit content | ✅ | ✅ |
-| Rename | ✅ | ❌ |
-| Delete | ✅ | ❌ |
-| Share | ✅ | ❌ |
+| Action | Owner | Editor | Commenter | Viewer |
+|---|:---:|:---:|:---:|:---:|
+| **View content** | ✅ | ✅ | ✅ | ✅ |
+| **View history** | ✅ | ✅ | ✅ | ✅ |
+| **Export MD/PDF**| ✅ | ✅ | ✅ | ✅ |
+| **Add comments** | ✅ | ✅ | ✅ | ❌ |
+| **Resolve comments**| ✅ | ✅ | ✅ | ❌ |
+| **Delete comments**| ✅ | ✅ (Author only) | ✅ (Author only) | ❌ |
+| **Edit content** | ✅ | ✅ | ❌ | ❌ |
+| **Restore version**| ✅ | ✅ | ❌ | ❌ |
+| **Rename document**| ✅ | ❌ | ❌ | ❌ |
+| **Share document** | ✅ | ❌ | ❌ | ❌ |
+| **Delete document**| ✅ | ❌ | ❌ | ❌ |
 
 ---
 
@@ -119,22 +140,31 @@ Document      { _id, title, content (Tiptap JSON), ownerId → User, sharedWith 
 |---|---|---|---|
 | `GET` | `/api/documents` | Required | List owned + shared documents |
 | `POST` | `/api/documents` | Required | Create new document |
-| `PATCH` | `/api/documents/:id` | Required | Update title and/or content |
+| `PATCH` | `/api/documents/:id` | Required | Update title (owner only) and/or content (owner/editor) |
 | `DELETE` | `/api/documents/:id` | Required | Delete (owner only) |
-| `POST` | `/api/share` | Required | Share document with a user by email |
+| `POST` | `/api/share` | Required | Share document with a user (owner only) |
+| `PATCH` | `/api/share` | Required | Update share role (owner only) |
+| `DELETE` | `/api/share` | Required | Remove share access (owner only) |
 | `POST` | `/api/upload` | Required | Upload `.txt`/`.md` → create document |
 | `GET` | `/api/users` | None | List all users (for share modal dropdown) |
+| `GET` | `/api/documents/:id/presence` | Required | Get active viewers (excluding self) |
+| `POST` | `/api/documents/:id/presence` | Required | Record client presence heartbeat |
+| `GET` | `/api/documents/:id/comments` | Required | List all comments |
+| `POST` | `/api/documents/:id/comments` | Required | Add a new comment (with optional text selection) |
+| `PATCH` | `/api/comments/:id` | Required | Mark comment as resolved |
+| `DELETE` | `/api/comments/:id` | Required | Delete comment (author or document owner) |
+| `GET` | `/api/documents/:id/versions` | Required | List version snapshots |
+| `POST` | `/api/documents/:id/versions/:versionId` | Required | Restore document to version snapshot |
 
 ---
 
 ## Key Design Decisions
 
-1. **Server Components for data fetching** — Dashboard and DocumentPage fetch directly in async Server Components, no client-side loading states needed.
-2. **Server Actions for mutations** — Login, signup, logout use Next.js Server Actions (`"use server"`), avoiding API round-trips for auth.
-3. **Global Mongoose singleton** — `db.ts` caches the Mongoose connection on `globalThis` to survive Next.js hot reloads.
-4. **Tiptap JSON as content format** — Content is stored as Tiptap's portable JSON (not HTML), ensuring format fidelity across sessions.
-5. **Autosave only on change** — `use-autosave` fires every 3 seconds but the save only executes if content or title actually changed (`lastSavedRef` comparison), preventing unnecessary DB writes.
-6. **Zod at every boundary** — All API inputs and Server Action inputs pass through Zod schemas before reaching business logic.
+1. **Staggered Polling for Presence** — Since Next.js on Vercel is serverless, persistent WebSockets are omitted. Heartbeats are sent every 12 seconds, and active user list queries poll every 12 seconds, staggered by 6 seconds. Expired viewers are cleaned up via Mongoose TTL indexes.
+2. **Throttled Version Snapshots** — Autosaves occur on edits, but snapshots are throttled to at most once per 5 minutes per user per document. This preserves granular history while preventing MongoDB storage bloat.
+3. **Client-Side Preview Renderer** — Version history displays inside a sidebar list. Clicking "Preview" compiles the version's TipTap JSON nodes to simple, styled JSX elements in real-time, completely client-side without external dependencies.
+4. **CSS Print Rules for PDF Export** — PDF generation leverages standard browser `window.print()` functionality, paired with comprehensive `@media print` rules in `globals.css` that strip workspace sidebars, edit toolbar buttons, comments list, and outlines, generating clean paginated documents.
+5. **Raw MongoDB Migration Query** — Document sharing data model upgrades are managed by a migration script executing raw MongoDB update operators to bypass Mongoose Schema casting exceptions on legacy documents.
 
 ---
 
@@ -153,9 +183,14 @@ MongoDB Atlas (prod) / MongoDB local (dev)
 
 | Test File | Approach | Coverage |
 |---|---|---|
-| `document-create.test.ts` | In-memory MongoDB (`mongodb-memory-server`) | Create doc, default title |
+| `document-create.test.ts` | In-memory MongoDB | Create doc, default title |
 | `document-share.test.ts` | In-memory MongoDB | Share, duplicate share, self-share rejection |
-| `upload-validation.test.ts` | In-memory MongoDB + route handler | .md/.txt accepted, .pdf rejected, >5MB rejected |
+| `upload-validation.test.ts` | In-memory MongoDB | .md/.txt accepted, .pdf/oversized rejected |
 | `login-card.test.tsx` | jsdom + React Testing Library | Renders tabs and seeded user buttons |
+| `presence.test.ts` | In-memory MongoDB | heartbeat, active user list, 30s timeout expiry |
+| `comments.test.ts` | In-memory MongoDB | add comment, selection capture, resolve, delete permissions |
+| `versions.test.ts` | In-memory MongoDB | snapshot throttling, history list, version restoration |
+| `roles.test.ts` | In-memory MongoDB | enforces viewer/commenter/editor restrictions, role updates |
+| `export.test.ts` | unit tests | TipTap JSON structure parsing to Markdown strings |
 
-All tests pass: **9/9** ✅
+All tests pass: **15/15** ✅
