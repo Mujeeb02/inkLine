@@ -47,3 +47,39 @@ body {
   @apply pointer-events-none float-left h-0 text-muted-foreground;
   content: attr(data-placeholder);
 }
+
+@media print {
+  body.inkline-print {
+    background: white !important;
+    color: black !important;
+  }
+  
+  body.inkline-print header,
+  body.inkline-print select,
+  body.inkline-print button,
+  body.inkline-print .sticky,
+  body.inkline-print .w-80,
+  body.inkline-print [aria-label="Back to dashboard"],
+  body.inkline-print .border-t-2 {
+    display: none !important;
+  }
+  
+  body.inkline-print .flex-grow.overflow-y-auto,
+  body.inkline-print .flex-1.overflow-hidden {
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body.inkline-print .border-2.border-slate-900 {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  body.inkline-print .border-b-2 {
+    border-bottom: 1px solid #ced4da !important;
+  }
+}

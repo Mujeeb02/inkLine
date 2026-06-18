@@ -42,7 +42,7 @@ describe("Role-based Sharing & Permissions", () => {
       DocumentService.updateDocument(doc.id, bob!._id.toString(), {
         content: { type: "doc", content: [{ type: "paragraph", text: "changed" }] },
       })
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       status: 403,
       message: "You do not have permission to edit this document",
     });
@@ -52,7 +52,7 @@ describe("Role-based Sharing & Permissions", () => {
       DocumentService.updateDocument(doc.id, bob!._id.toString(), {
         title: "Bob's Rename",
       })
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       status: 403,
       message: "Only the owner can rename this document",
     });
@@ -86,7 +86,7 @@ describe("Role-based Sharing & Permissions", () => {
     await ShareService.removeShare(doc.id, alice!._id.toString(), bob!._id.toString());
     await expect(
       DocumentService.getDocumentForUser(doc.id, bob!._id.toString())
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       status: 403,
       message: "Access denied",
     });

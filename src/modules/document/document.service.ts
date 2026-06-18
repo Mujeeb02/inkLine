@@ -183,6 +183,18 @@ export class DocumentService {
       throw new AppError("Document not found", 404);
     }
 
+    const user = await UserService.getUserById(userId);
+    if (user) {
+      const { VersionService } = await import("@/modules/version/version.service");
+      await VersionService.maybeSnapshot(
+        updatedDocument._id.toString(),
+        userId,
+        user.email,
+        updatedDocument.title,
+        updatedDocument.content
+      );
+    }
+
     return {
       id: updatedDocument._id.toString(),
       title: updatedDocument.title,

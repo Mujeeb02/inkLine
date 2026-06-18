@@ -54,7 +54,7 @@ describe("document sharing", () => {
 
     await expect(
       ShareService.shareDocument(document.id, alice!._id.toString(), "bob@test.com"),
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       message: "Already shared",
       status: 409,
     });
@@ -72,7 +72,7 @@ describe("document sharing", () => {
 
     await expect(
       ShareService.shareDocument(document.id, alice!._id.toString(), "alice@test.com"),
-    ).rejects.toMatchObject<AppError>({
+    ).rejects.toMatchObject({
       message: "Owner cannot share a document with themselves",
       status: 400,
     });

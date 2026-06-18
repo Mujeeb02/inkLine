@@ -142,7 +142,7 @@ export function ShareModal({ documentId, sharedWith, trigger }: ShareModalProps)
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md border-2 border-slate-900 shadow-panel bg-white rounded-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md border-2 border-slate-900 shadow-panel bg-white rounded-2xl overflow-visible">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ffc300] border-2 border-slate-900 text-slate-900 shadow-btn">
@@ -181,6 +181,46 @@ export function ShareModal({ documentId, sharedWith, trigger }: ShareModalProps)
                   disabled={isPending}
                   autoComplete="off"
                 />
+
+                {/* Searchable Dropdown */}
+                {showDropdown && filteredUsers.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-48 overflow-y-auto rounded-xl border-2 border-slate-900 bg-white shadow-panel animate-fade-in">
+                    <div className="px-3 py-2 border-b border-slate-100">
+                      <p className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
+                        {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} found
+                      </p>
+                    </div>
+                    {filteredUsers.map((user) => (
+                      <button
+                        key={user.email}
+                        type="button"
+                        onClick={() => selectUser(user.email)}
+                        className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 ${
+                          email === user.email ? "bg-yellow-50" : ""
+                        }`}
+                      >
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ffc300] border border-slate-900 text-slate-900 font-black text-[9px] flex-shrink-0">
+                          {user.email[0].toUpperCase()}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">
+                          {user.email}
+                        </span>
+                        {email === user.email && (
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty state when no matches */}
+                {showDropdown && filteredUsers.length === 0 && email.trim() && !isLoadingUsers && (
+                  <div className="absolute top-full left-0 right-0 z-50 mt-1.5 rounded-xl border-2 border-slate-900 bg-white shadow-panel py-3 px-3 text-center">
+                    <User className="h-5 w-5 text-slate-300 mx-auto mb-1" />
+                    <p className="text-[11px] font-semibold text-slate-400">No users match "{email}"</p>
+                    <p className="text-[10px] text-slate-300 mt-0.5">You can still share with any valid email.</p>
+                  </div>
+                )}
               </div>
               <select
                 value={role}
@@ -193,46 +233,6 @@ export function ShareModal({ documentId, sharedWith, trigger }: ShareModalProps)
                 <option value="editor">Editor</option>
               </select>
             </div>
-
-            {/* Searchable Dropdown */}
-            {showDropdown && filteredUsers.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 max-h-48 overflow-y-auto rounded-xl border-2 border-slate-900 bg-white shadow-panel animate-fade-in">
-                <div className="px-3 py-2 border-b border-slate-100">
-                  <p className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
-                    {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} found
-                  </p>
-                </div>
-                {filteredUsers.map((user) => (
-                  <button
-                    key={user.email}
-                    type="button"
-                    onClick={() => selectUser(user.email)}
-                    className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 ${
-                      email === user.email ? "bg-yellow-50" : ""
-                    }`}
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#ffc300] border border-slate-900 text-slate-900 font-black text-[9px] flex-shrink-0">
-                      {user.email[0].toUpperCase()}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">
-                      {user.email}
-                    </span>
-                    {email === user.email && (
-                      <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Empty state when no matches */}
-            {showDropdown && filteredUsers.length === 0 && email.trim() && !isLoadingUsers && (
-              <div className="absolute top-full left-0 right-0 z-50 mt-1.5 rounded-xl border-2 border-slate-900 bg-white shadow-panel py-3 px-3 text-center">
-                <User className="h-5 w-5 text-slate-300 mx-auto mb-1" />
-                <p className="text-[11px] font-semibold text-slate-400">No users match "{email}"</p>
-                <p className="text-[10px] text-slate-300 mt-0.5">You can still share with any valid email.</p>
-              </div>
-            )}
           </div>
 
           <DialogFooter className="pt-2 gap-2">

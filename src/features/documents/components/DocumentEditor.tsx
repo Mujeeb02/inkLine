@@ -10,14 +10,19 @@ import { DocumentClientService } from "../services/documents";
 import { useToast } from "@/shared/components/providers/ToastProvider";
 import type { EditorDocument } from "@/modules/document/document.types";
 import { FileText, Clock, Sparkles } from "lucide-react";
+import { useComments } from "../hooks/use-comments";
+import { CommentPanel } from "./CommentPanel";
+import { useVersions } from "../hooks/use-versions";
+import { VersionHistoryPanel } from "./VersionHistoryPanel";
 
 type DocumentEditorProps = {
   document: EditorDocument;
+  currentUser: { _id: string; email: string };
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-export function DocumentEditor({ document }: DocumentEditorProps) {
+export function DocumentEditor({ document, currentUser }: DocumentEditorProps) {
   const { toast } = useToast();
   const [title, setTitle] = useState(document.title);
   const [saveState, setSaveState] = useState<SaveState>("saved");
@@ -25,6 +30,31 @@ export function DocumentEditor({ document }: DocumentEditorProps) {
   const saveInFlightRef = useRef(false);
 
   const isEditable = document.permission === "owner" || document.permission === "editor";
+
+  const [activePanel, setActivePanel] = useState<"comments" | "versions" | null>(null);
+
+  const {
+    comments,
+    addComment,
+    resolveComment,
+    deleteComment,
+  } = useComments(document.id);
+
+  const {
+    versions,
+    restoreVersion,
+  } = useVersions(document.id);
+
+  const onRestoreSuccess = (updatedDoc: any) => {
+    setTitle(updatedDoc.title);
+    if (editor) {
+      editor.commands.setContent(updatedDoc.content);
+    }
+    setLastSavedAt(updatedDoc.updatedAt);
+    setSaveState("saved");
+    toast("Document restored successfully", "success");
+    setActivePanel(null);
+  };
 
   const lastSavedRef = useRef({
     title: document.title,
@@ -126,10 +156,15 @@ export function DocumentEditor({ document }: DocumentEditorProps) {
         saveState={saveState}
         lastSavedAt={lastSavedAt}
         onTitleChange={onTitleChange}
+        activePanel={activePanel}
+        setActivePanel={setActivePanel}
+        commentCount={comments.filter((c) => !c.resolved).length}
       />
 
-      <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10">
-        <div className="border-2 border-slate-900 rounded-2xl bg-white p-8 md:p-12 shadow-panel space-y-8">
+      <div className="flex flex-1 overflow-hidden h-[calc(100vh-4rem)]">
+        <div className="flex-grow overflow-y-auto px-4 sm:px-6 py-10">
+          <div className="max-w-4xl w-full mx-auto">
+            <div className="border-2 border-slate-900 rounded-2xl bg-white p-8 md:p-12 shadow-panel space-y-8">
           
           {/* Editor Title Block (Notion-style) */}
           <div className="space-y-3 pb-6 border-b-2 border-slate-100">
@@ -191,7 +226,34 @@ export function DocumentEditor({ document }: DocumentEditorProps) {
             </div>
           </div>
 
+            </div>
+          </div>
         </div>
+
+        {activePanel === "comments" && (
+          <CommentPanel
+            documentId={document.id}
+            comments={comments}
+            addComment={addComment}
+            resolveComment={resolveComment}
+            deleteComment={deleteComment}
+            currentUserId={currentUser._id}
+            userPermission={document.permission}
+            editor={editor}
+            onClose={() => setActivePanel(null)}
+          />
+        )}
+
+        {activePanel === "versions" && (
+          <VersionHistoryPanel
+            documentId={document.id}
+            versions={versions}
+            restoreVersion={restoreVersion}
+            userPermission={document.permission}
+            onClose={() => setActivePanel(null)}
+            onRestoreSuccess={onRestoreSuccess}
+          />
+        )}
       </div>
     </div>
   );

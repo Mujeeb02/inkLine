@@ -17,7 +17,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
 
   try {
     const document = await DocumentService.getDocumentForUser(id, user._id);
-    return <DocumentEditor document={document} />;
+    return <DocumentEditor document={document} currentUser={user} />;
   } catch (error) {
     if (error instanceof AppError && error.status === 404) {
       notFound();
