@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 195, 0, 0.15), transparent 40%),
+    radial-gradient(circle at bottom right, rgba(224, 90, 71, 0.12), transparent 40%),
+    linear-gradient(180deg, #fffefc 0%, #faf8f5 100%);
+  color: #0f172a;
+}
+
+* {
+  border-color: #ced4da;
+}
+
+.prose-editor {
+  @apply min-h-[340px] rounded-2xl border border-border bg-white px-5 py-4 text-base leading-7 text-foreground shadow-panel;
+}
+
+.prose-editor .ProseMirror {
+  @apply min-h-[300px] outline-none;
+}
+
+.prose-editor .ProseMirror h1 {
+  @apply font-serif text-3xl font-semibold tracking-tight;
+}
+
+.prose-editor .ProseMirror h2 {
+  @apply font-serif text-2xl font-semibold tracking-tight;
+}
+
+.prose-editor .ProseMirror ul {
+  @apply list-disc pl-6;
+}
+
+.prose-editor .ProseMirror ol {
+  @apply list-decimal pl-6;
+}
+
+.prose-editor .ProseMirror p.is-editor-empty:first-child::before {
+  @apply pointer-events-none float-left h-0 text-muted-foreground;
+  content: attr(data-placeholder);
+}
