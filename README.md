@@ -1,80 +1,78 @@
-# Inkline Docs
+# Inkline Docs — Collaborative Document Platform
 
-Inkline Docs is a lightweight document collaboration platform built with Next.js 15, TypeScript, MongoDB Atlas, Mongoose, Tailwind CSS, Shadcn UI patterns, Tiptap, Zod, and Vitest.
+Inkline Docs is a collaborative rich text editor platform designed for team productivity. It enables users to create documents, format content, collaborate with other team members in real-time, comment inline on selected text, browse version history rollbacks, and import/export documents.
 
-## Features
+### 🌐 Live Deployment
+**Deployed URL**: [https://ink-line-three.vercel.app/](https://ink-line-three.vercel.app/)
 
-- Cookie-based login with seeded users: `alice@test.com`, `bob@test.com`, `charlie@test.com`
-- Dashboard for owned documents and documents shared with the current user
-- Rich text editing with autosave every 3 seconds when content changes
-- File import for `.txt` and `.md` files up to 5 MB
-- Sharing by seeded user email with owner-only controls
-- Route handlers for document CRUD, upload, and sharing
+---
 
-## Setup
+## ✨ Features
 
-1. Install dependencies:
+*   **Secure Session Authentication**: Password-based login and signup flow along with quick-login buttons for seeded user testing.
+*   **Rich Text Editor**: Fully-featured rich text editing experience (headings, lists, underline, bold, italic) with 3-second autosave capabilities.
+*   **Real-Time Collaboration Presence**: Visual presence indicators in the document header listing active collaborators currently editing or viewing.
+*   **Granular Access Roles**: Share documents with specific roles (`Viewer`, `Commenter`, `Editor`) with an autocomplete search for team members.
+*   **Contextual Comments & Suggestions**: Drop comments matching specific highlighted text selections in the editor, with resolving and deleting controls.
+*   **Version History Snapshots**: Automatic 5-minute throttled snapshots. Users can view past versions via a client-side formatted layout preview and restore them instantly.
+*   **Document Import**: Create new documents instantly by importing `.txt` or `.md` files up to 5 MB.
+*   **Document Export**: Export documents to standard Markdown files or print to PDF using custom clean printer styling sheets.
 
+---
+
+## 🛠️ Technology Stack
+
+*   **Frontend Framework**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
+*   **Editor Component**: Tiptap
+*   **Database & ORM**: MongoDB, Mongoose
+*   **Validation**: Zod
+*   **Testing Library**: Vitest, React Testing Library
+
+---
+
+## 🚀 Getting Started
+
+Follow these steps to run the application locally:
+
+### 1. Prerequisites
+Make sure you have Node.js (v18+) and npm installed.
+
+### 2. Installation
+Install the project dependencies:
 ```bash
 npm install
 ```
 
-2. Copy environment values from `.env.example` into `.env.local`.
+### 3. Environment Configuration
+Create a `.env` file in the root of the project:
+```env
+MONGODB_URI=your_mongodb_connection_string
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-3. Provide a MongoDB Atlas connection string in `MONGODB_URI`.
-
-4. Run the development server:
-
+### 4. Running the Development Server
+Start the local server:
 ```bash
 npm run dev
 ```
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-5. Open `http://localhost:3000`.
+---
 
-## Scripts
+## 🧪 Testing
 
-- `npm run dev` starts the local Next.js server
-- `npm run build` verifies the production build
-- `npm run lint` runs ESLint
-- `npm test` runs the Vitest suite
+The platform features an integration and unit test suite verifying user permissions, comment creation/deletion logic, presence heartbeats, version rollbacks, and formatting.
 
-## Architecture Notes
+Run the tests using:
+```bash
+npm run test
+```
 
-- `src/app` contains the App Router pages and route handlers.
-- `src/lib/services/documents.ts` centralizes document permissions and persistence logic.
-- `src/lib/auth.ts` resolves the cookie-backed current user.
-- `src/models` defines the Mongoose schemas for `User` and `Document`.
-- `src/components` contains the dashboard, login, editor, and UI primitives.
-- Tiptap content is stored as JSON in MongoDB to preserve formatting across refreshes.
+---
 
-## Testing
+## ☁️ Deployment Instructions
 
-The test suite uses `mongodb-memory-server` so document and sharing tests run against a real ephemeral MongoDB instance without touching Atlas.
-
-Required tests are included:
-
-- `src/tests/document-create.test.ts`
-- `src/tests/document-share.test.ts`
-- `src/tests/upload-validation.test.ts`
-
-There is also a small React Testing Library smoke test for the login picker UI.
-
-## Deployment
-
-### Vercel
-
-1. Push the project to a Git provider.
-2. Import the repository into Vercel.
-3. Set `MONGODB_URI` and `NEXT_PUBLIC_APP_URL` in the Vercel project environment settings.
-4. Deploy with the default Next.js build command: `npm run build`.
-
-### MongoDB Atlas
-
-1. Create an Atlas cluster.
-2. Add a database user with read/write access.
-3. Add your Vercel outbound IP rules if your cluster uses an IP allowlist.
-4. Paste the connection string into `MONGODB_URI`.
-
-## Non-goals
-
-This implementation intentionally does not include real-time collaboration, WebSockets, CRDTs, comments, version history, or activity logs.
+### Setting Up Environment Variables (Vercel)
+If you deploy this application on Vercel or any server hosting provider, ensure the following environment variables are set in the dashboard:
+*   `MONGODB_URI`: The MongoDB Atlas connection string. *(Make sure MongoDB Atlas Network Access is set to allow connections from all IP addresses `0.0.0.0/0` so Vercel serverless functions can connect).*
+*   `NEXT_PUBLIC_APP_URL`: The production URL of the app (e.g., `https://ink-line-three.vercel.app`).
